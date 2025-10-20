@@ -1,0 +1,19 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Node
+node_modules/
+dist/
+web/.vite/
+
+# Data
+dataset/*
+!dataset/.gitkeep
+
+# Env
+.env
+infra/*.env
+api/.env
+web/.env
