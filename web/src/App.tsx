@@ -2,20 +2,20 @@ import { useEffect, useState } from 'react'
 import './App.css'
 import { fetchMeta } from './lib/api';
 import type { MetaResponse } from './lib/api';
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className='rounded-2xl bg-white shadow-soft p-4'>
-      <div className='text-xs uppercase text-slate-500'>{label}</div>
-      <div className='text-xl font-semibold'>{value}</div>
-    </div>
-  );
-}
+import FilterBar from './components/FilterBar';
+import ScatterBudget from './components/ScatterBudget';
 
 export default function App() {
   const [meta, setMeta] = useState<MetaResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
+
+  const [filters, setFilters] = useState<{ genre?: string; ymin?: number; ymax?: number; limit: number }>({
+    genre: undefined,
+    ymin: undefined,
+    ymax: undefined,
+    limit: 2000,
+  });
 
   useEffect(() => {
     fetchMeta()
@@ -47,14 +47,18 @@ export default function App() {
             <Stat label="Languages" value={String(meta.languages.length)} />
           </section>
 
-          <section className='card'>
-            <div className='card-title'>Charts</div>
-            <p className='text-slate-600'>
-              Placeholder
-            </p>
-          </section>
+          <FilterBar meta={meta} value={filters} onChange={setFilters} />
+
+          <ScatterBudget genre={filters.genre} ymin={filters.ymin} ymax={filters.ymax} limit={filters.limit} />
         </>
       )}
     </div>
   );
 }
+
+const Stat: React.FC<{ label: string; value: string }> = ({ label, value }) => (
+  <div className="stat flex gap-2">
+    <span className="font-semibold">{label}:</span>
+    <span>{value}</span>
+  </div>
+);

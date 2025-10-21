@@ -3,6 +3,12 @@ import * as echarts from "echarts";
 import { fetchScatterBudget, type ScatterBudgetResponse } from "../lib/api";
 import { posterUrl } from "../lib/tmdb";
 
+type TooltipParams = {
+    name?: string;
+    value?: [number, number] | number[];
+    data?: { poster?: string | null; year?: number | null };
+};
+
 type Props = {
   genre?: string;
   ymin?: number;
@@ -20,7 +26,7 @@ export default function ScatterBudget({ genre, ymin, ymax, limit }: Props) {
     useEffect(() => {
         setLoading(true);
         setErr(null);
-        fetchScatterBudget({ genre, ymin, ymax, limit }).then(setData).catch((e) => setErr(e?.message ?? "Error"))
+        fetchScatterBudget({ genre, ymin, ymax, limit }).then(setData).catch((e) => setErr(e?.message ?? "Error")).finally(() => setLoading(false));
     }, [genre, ymin, ymax, limit]);
 
     useEffect(() => {
@@ -53,24 +59,32 @@ export default function ScatterBudget({ genre, ymin, ymax, limit }: Props) {
             tooltip: {
                 trigger: "item",
                 confine: true,
-                formatter: (params: any) => {
-                    const poster = params.data?.poster;
-                    const title = params.name ?? "";
-                    const year = params.data?.year ?? "";
-                    const [b, r] = params.value as number[];
-                    const budget = b.toLocaleString();
-                    const revenue = r.toLocaleString();
-                    const img = poster ? `<img src="${poster}" style="width:46px;height:auto;border-radius:6px;margin-right:8px;object-fit:cover;" />` : "";
-                    return `
-                        <div style="display:flex;align-items:flex-start;">
-                        ${img}
-                        <div>
-                            <div style="font-weight:600;max-width:240px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${title} ${year ? `(${year})` : ""}</div>
-                            <div style="opacity:.8">Budget: $${budget}</div>
-                            <div style="opacity:.8">Revenue: $${revenue}</div>
+                formatter: (raw: unknown) => {
+                const params = raw as TooltipParams | undefined;
+
+                const title = params?.name ?? "";
+                const [b, r] = (params?.value ?? [0, 0]) as [number, number];
+                const year = params?.data?.year ?? "";
+                const poster = params?.data?.poster;
+
+                const budget = b.toLocaleString();
+                const revenue = r.toLocaleString();
+                const img = poster
+                    ? `<img src="${poster}" style="width:46px;height:auto;border-radius:6px;margin-right:8px;object-fit:cover;" />`
+                    : "";
+
+                return `
+                    <div style="display:flex;align-items:flex-start;">
+                    ${img}
+                    <div>
+                        <div style="font-weight:600;max-width:240px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                        ${title} ${year ? `(${year})` : ""}
                         </div>
-                        </div>
-                    `;
+                        <div style="opacity:.8">Budget: $${budget}</div>
+                        <div style="opacity:.8">Revenue: $${revenue}</div>
+                    </div>
+                    </div>
+                `;
                 },
             },
             grid: { left: 60, right: 20, top: 20, bottom: 50 },
