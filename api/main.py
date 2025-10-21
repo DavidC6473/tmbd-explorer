@@ -5,6 +5,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
 from dotenv import load_dotenv
+from datetime import date
+
+CURRENT_YEAR = date.today().year
 
 load_dotenv("infra/.env")
 DB_URL = os.environ.get("DB_URL")
@@ -24,7 +27,7 @@ app.add_middleware(
 
 def _where_and_join_for_filters(ymin: int | None, ymax: int | None, genre: str| None):
     joins = []
-    wheres = ["m.budget_usd > 0", "m.revenue_usd > 0"]
+    wheres = ["m.budget_usd > 0", "m.revenue_usd > 0", "m.year IS NOT NULL", "m.year <= EXTRACT(YEAR FROM CURRENT_DATE)"]
     params: dict[str, object] = {}
 
     if ymin is not None:
@@ -45,7 +48,12 @@ def _where_and_join_for_filters(ymin: int | None, ymax: int | None, genre: str| 
 @app.get("/meta")
 def get_meta() -> Dict[str, Any]:
     with engine.begin() as conn:
-        yr = conn.execute(text("SELECT MIN(year), MAX(year) FROM movies WHERE year IS NOT NULL")).first()
+        yr = conn.execute(text("""
+                SELECT
+                    MIN(year) FILTER (WHERE year IS NOT NULL AND year <= EXTRACT(YEAR FROM CURRENT_DATE)) AS year_max,
+                    MAX(year) FILTER (WHERE year IS NOT NULL AND year <= EXTRACT(YEAR FROM CURRENT_DATE)) AS year_max  
+                FROM movies
+        """)).first()
         year_min, year_max = (yr[0], yr[1]) if yr else (None, None)
 
         genres = conn.execute(text("""
@@ -79,6 +87,9 @@ def scatter_budget_revenue(
     genre: str | None = Query(None),
     limit: int = Query(12000, ge=100, le=50000)
 ):
+    if ymax is not None and ymax > CURRENT_YEAR:
+        ymax = CURRENT_YEAR
+    
     join_sql, where_sql, params = _where_and_join_for_filters(ymin, ymax, genre)
 
     points_sql = f"""
@@ -129,6 +140,10 @@ def scatter_rating_revenue(
     limit: int = Query(12000, ge=100, le=50000),
     source: str = Query("tmdb", pattern="^(tmdb|imdb)$"),
 ):
+    if ymax is not None and ymax > CURRENT_YEAR:
+        ymax = CURRENT_YEAR
+
+    
     if source == "imdb":
         rating_col = "m.imdb_rating"
         votes_filter = "m.imdb_votes >= 1000"
