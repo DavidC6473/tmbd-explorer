@@ -22,3 +22,4 @@ infra/rename_columns.py
 infra/inspect_movies.py
 etl/inspect_genres.py
 start.txt
+pytest.ini 
