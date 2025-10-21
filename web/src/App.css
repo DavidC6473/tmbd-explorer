@@ -1,0 +1,6 @@
+.card {
+  @apply bg-white rounded-2xl shadow-lg p-5;
+}
+.card-title {
+  @apply text-lg font-semibold mb-3;
+}
