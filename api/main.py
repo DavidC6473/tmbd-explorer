@@ -1,6 +1,6 @@
 import os
 from typing import List, Dict, Any
-from fastapi import FastAPI
+from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
@@ -21,6 +21,26 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+def _where_and_join_for_filters(ymin: int | None, ymax: int | None, genre: str| None):
+    joins = []
+    wheres = ["m.budget_usd > 0", "m.revenue_usd > 0"]
+    params: dict[str, object] = {}
+
+    if ymin is not None:
+        wheres.append("m.year >= :ymin")
+        params["ymin"] = ymin
+    if ymax is not None:
+        wheres.append("m.year <= :ymax")
+        params["ymax"] = ymax
+    if genre:
+        joins.append("JOIN movie_genres mg ON mg.movie_id = m.id")
+        joins.append("JOIN genres g ON g.id = mg.genre_id")
+        wheres.append("g.name = :genre")
+        params["genre"] = genre
+    join_sql = (" " + " ".join(joins)) if joins else ""
+    where_sql = " WHERE " + " AND ".join(wheres)
+    return join_sql, where_sql, params
 
 @app.get("/meta")
 def get_meta() -> Dict[str, Any]:
@@ -51,3 +71,52 @@ def get_meta() -> Dict[str, Any]:
         "genres": genres,
         "languages": languages,
     }
+
+@app.get("/scatter/budget-revenue")
+def scatter_budget_revenue(
+    ymin: int | None = Query(None),
+    ymax: int | None = Query(None),
+    genre: str | None = Query(None),
+    limit: int = Query(12000, ge=100, le=50000)
+):
+    join_sql, where_sql, params = _where_and_join_for_filters(ymin, ymax, genre)
+
+    points_sql = f"""
+        SELECT m.id, m.title, m.year, m.budget_usd AS budget, m.revenue_usd AS revenue, m.poster_path
+        FROM movies m{join_sql}{where_sql}
+        ORDER BY m.id
+        LIMIT :limit
+    """
+    trend_sql = f"""
+        SELECT
+            regr_slope(LOG(10, m.budget_usd), LOG(10, m.revenue_usd)) AS slope,
+            POWER(corr(LOG(10, m.budget_usd), LOG(10, m.revenue_usd)), 2) AS r2,
+            COUNT(*)::int AS n
+        FROM movies m{join_sql}{where_sql}
+    """
+    params_pts = dict(params)
+    params_pts["limit"] = limit
+
+    with engine.begin() as conn:
+        rows = conn.execute(text(points_sql), params_pts).mappings().all()
+        trend = conn.execute(text(trend_sql), params).mappings().first()
+
+    points = [
+        {
+            "id": r["id"],
+            "title": r["title"],
+            "year": r["year"],
+            "budget": float(r["budget"]) if r["budget"] is not None else None,
+            "revenue": float(r["revenue"]) if r["revenue"] is not None else None,
+            "poster_path": r["poster_path"],
+        }
+        for r in rows
+    ]
+    t = trend or {}
+    out_trend = {
+        "slope": float(t["slope"]) if t.get("slope") is not None else None,
+        "r2": float(t["r2"]) if t.get("r2") is not None else None,
+        "n": int(t["n"]) if t.get("n") is not None else 0,
+    }
+
+    return {"points": points, "trend": out_trend}

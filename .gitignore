@@ -17,3 +17,8 @@ dataset/*
 infra/*.env
 api/.env
 web/.env
+infra/env.txt
+infra/rename_columns.py
+infra/inspect_movies.py
+etl/inspect_genres.py
+start.txt

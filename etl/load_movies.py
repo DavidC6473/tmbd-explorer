@@ -10,12 +10,6 @@ assert DB_URL, "DB_URL missing in infra/.env"
 CSV_PATH = os.path.join("dataset", "tmdb_movies.csv")
 
 def parse_genre_names(genre_cell):
-    """
-    Accepts comma-separated text like:
-      "Comedy, Drama, Romance"
-    Also tolerates lists/JSON if they appear later.
-    Returns list[str] of cleaned genre names.
-    """
     import pandas as pd, json, ast
     if pd.isna(genre_cell):
         return []
