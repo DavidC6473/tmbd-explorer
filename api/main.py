@@ -120,3 +120,64 @@ def scatter_budget_revenue(
     }
 
     return {"points": points, "trend": out_trend}
+
+@app.get("/scatter/rating-revenue")
+def scatter_rating_revenue(
+    ymin: int | None = Query(None),
+    ymax: int | None = Query(None),
+    genre: str | None = Query(None),
+    limit: int = Query(12000, ge=100, le=50000),
+    source: str = Query("tmdb", pattern="^(tmdb|imdb)$"),
+):
+    if source == "imdb":
+        rating_col = "m.imdb_rating"
+        votes_filter = "m.imdb_votes >= 1000"
+    else:
+        rating_col = "m.vote_avg_tmdb"
+        votes_filter = "m.vote_count_tmdb >= 50"
+
+    join_sql, where_sql, params = _where_and_join_for_filters(ymin, ymax, genre)
+
+    where_sql_extra = where_sql + f" AND {rating_col} IS NOT NULL AND {votes_filter}"
+
+    points_sql = f"""
+        SELECT m.id, m.title, m.year,{rating_col} AS rating, m.revenue_usd AS revenue, m.poster_path
+        FROM movies m{join_sql}{where_sql_extra}
+        ORDER BY m.id
+        LIMIT :limit
+    """
+
+    trend_sql = f"""
+        SELECT 
+            regr_slope({rating_col}, LOG(10, m.revenue_usd)) AS slope,
+            POWER(corr({rating_col}, LOG(10, m.revenue_usd)), 2),
+            COUNT(*)::int
+        FROM movies m{join_sql}{where_sql_extra}
+    """
+
+    params_pts = dict(params)
+    params_pts["limit"] = limit
+
+    with engine.begin() as conn:
+        rows = conn.execute(text(points_sql), params_pts).mappings().all()
+        trend = conn.execute(text(trend_sql), params).mappings().first()
+
+    points = [
+        {
+            "id": r["id"],
+            "title": r["title"],
+            "year": r["year"],
+            "rating": float(r["rating"]) if r["rating"] is not None else None,
+            "revenue": float(r["revenue"]) if r["revenue"] is not None else None,
+            "poster_path": r["poster_path"],
+
+        }
+        for r in rows
+    ]
+    t = trend or {}
+    out_trend = {
+        "slope": float(t["slope"]) if t.get("slope") is not None else None,
+        "r2": float(t["r2"]) if t.get("r2") is not None else None,
+        "n": int(t["n"]) if t.get("n") is not None else 0,
+    }
+    return {"points": points, "trend": out_trend, "source": source}
