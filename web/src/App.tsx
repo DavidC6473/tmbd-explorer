@@ -5,6 +5,7 @@ import type { MetaResponse } from './lib/api';
 import FilterBar from './components/FilterBar';
 import ScatterBudget from './components/ScatterBudget';
 import ScatterRating from './components/ScatterRating';
+import TopFilms from './components/TopFilms';
 
 export default function App() {
   const [meta, setMeta] = useState<MetaResponse | null>(null);
@@ -80,6 +81,27 @@ export default function App() {
             ymax={filters.ymax}
             limit={filters.limit}
             source={ratingSource}
+          />
+
+          <TopFilms
+            genre={filters.genre}
+            ymin={filters.ymin}
+            ymax={filters.ymax}
+            limit={filters.limit}
+            source={ratingSource}
+            sortBy="revenue"
+            title="Top Grossing Films"
+            count={12}
+          />
+          <TopFilms
+            genre={filters.genre}
+            ymin={filters.ymin}
+            ymax={filters.ymax}
+            limit={filters.limit}
+            source={ratingSource}
+            sortBy="rating"
+            title={`Top Rated Films (${ratingSource.toUpperCase()})`}
+            count={12}
           />
         </>
       )}
