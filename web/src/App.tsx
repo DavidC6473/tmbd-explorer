@@ -6,21 +6,30 @@ import FilterBar from './components/FilterBar';
 import ScatterBudget from './components/ScatterBudget';
 import ScatterRating from './components/ScatterRating';
 import TopFilms from './components/TopFilms';
+import { parseFiltersFromQS, stringifyFiltersToQS } from './lib/qs';
 
 export default function App() {
   const [meta, setMeta] = useState<MetaResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
 
-  const [filters, setFilters] = useState<{ genre?: string; ymin?: number; ymax?: number; limit: number }>({
-    genre: undefined,
-    ymin: undefined,
-    ymax: undefined,
-    limit: 2000,
+  const [filters, setFilters] = useState<{ 
+    genre?: string; ymin?: number; ymax?: number; limit: number 
+  }>(() => {
+    const fromQs = parseFiltersFromQS(window.location.search);
+    return {
+      genre: undefined,
+      ymin: undefined,
+      ymax: undefined,
+      limit: 2000,
+      ...fromQs,
+    };
   });
 
-  // NEW: rating source (TMDB | IMDb)
-  const [ratingSource, setRatingSource] = useState<"tmdb" | "imdb">("tmdb");
+  const srcFromQs = new URLSearchParams(window.location.search).get("source");
+  const initialSource: "tmdb" | "imdb" = 
+    srcFromQs === "tmdb" ? (srcFromQs as "tmdb" | "imdb") : "tmdb";
+  const [ratingSource, setRatingSource] = useState<"tmdb" | "imdb">(initialSource);
 
   useEffect(() => {
     fetchMeta()
@@ -28,6 +37,17 @@ export default function App() {
       .catch((e) => setErr(e?.message ?? "Error"))
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    const qs = stringifyFiltersToQS(filters);
+    const sp = new URLSearchParams(qs);
+
+    sp.set("src", ratingSource);
+
+  const nextUrl = `${window.location.pathname}${sp.toString() ? `?${sp}` : ""}${window.location.hash}`;
+  window.history.replaceState(null, "", nextUrl);
+}, [filters, ratingSource]);
+
 
   return (
     <div className='container-xl py-8 space-y-8'>
@@ -45,7 +65,6 @@ export default function App() {
 
       {meta && (
         <>
-          {/* typo fix: md:grid-cols-4 */}
           <section className='grid grid-cols-2 md:grid-cols-4 gap-4'>
             <Stat label="Year Min" value={String(meta.year_min ?? "-")} />
             <Stat label="Year Max" value={String(meta.year_max ?? "-")} />
@@ -55,7 +74,6 @@ export default function App() {
 
           <FilterBar meta={meta} value={filters} onChange={setFilters} />
 
-          {/* Simple inline control for rating source */}
           <section className="flex items-center gap-3">
             <label className="text-sm font-medium">Rating source</label>
             <select
