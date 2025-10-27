@@ -41,6 +41,20 @@ export default function ScatterBudget({ genre, ymin, ymax, limit }: Props) {
         };
     }, []);
 
+    const handleExport = () => {
+        if (!chartRef.current) return;
+        const dataURL = chartRef.current.getDataURL({
+            type: "png",
+            pixelRatio: 2,
+            backgroundColor: "#ffffff",
+        });
+        const a = document.createElement("a");
+        a.href = dataURL;
+        const slug = genre ? genre.replace(/\s+/g, "-").toLowerCase() : "all";
+        a.download = `budget-vs-revenue_${slug}.png`;
+        a.click();
+    };
+
     const option = useMemo<echarts.EChartsOption>(() => {
         const pts = data?.points ??[];
 
@@ -150,7 +164,10 @@ export default function ScatterBudget({ genre, ymin, ymax, limit }: Props) {
 
     return (
         <section className="card">
-            <div className="card-title">Budget vs Revenue (log-log)</div>
+            <div className="card-title flex items-center justify-between">
+                <span>Budget vs Revenue</span>
+                <button className="btn btn-sm" onClick={handleExport}>Export PNG</button>
+            </div>
             {err && <div className="text-red-600 mb-3">Error: {err}</div>}
             {loading && <div className="text-slate-600">Loading chart...</div>}
             <div ref={ref} className="w-full" style={{ height: 400}} />

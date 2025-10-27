@@ -39,6 +39,20 @@ export default function ScatterRating({ genre, ymin, ymax, limit, source }: Prop
     };
   }, []);
 
+  const handleExport = () => {
+    if (!chartRef.current) return;
+    const dataURL = chartRef.current.getDataURL({
+        type: "png",
+        pixelRatio: 2,
+        backgroundColor: "#ffffff",
+    });
+    const slug = `${source ?? "tmdb"}-${genre ? genre.replace(/\s+/g, "-").toLowerCase() : "all"}`;
+    const a = document.createElement("a");
+    a.href = dataURL;
+    a.download = `rating-vs-revenue_${slug}.png`;
+    a.click();
+  };
+
   const option = useMemo(() => {
     const pts = data?.points ?? [];
 
@@ -147,7 +161,10 @@ export default function ScatterRating({ genre, ymin, ymax, limit, source }: Prop
 
   return (
     <section className="card">
-      <div className="card-title">Rating vs Revenue</div>
+      <div className="card-title flex items-center justify-between">
+        <span>Rating vs Revenue</span>
+        <button className="btn btn-sm" onClick={handleExport}>Export PNG</button>
+      </div>
       {err && <div className="text-red-600 mb-3">Error: {err}</div>}
       {loading && <div className="text-slate-600">Loading chart...</div>}
       <div ref={ref} className="w-full" style={{ height: 400 }} />
