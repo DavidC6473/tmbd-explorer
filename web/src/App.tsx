@@ -4,6 +4,7 @@ import { fetchMeta } from './lib/api';
 import type { MetaResponse } from './lib/api';
 import FilterBar from './components/FilterBar';
 import ScatterBudget from './components/ScatterBudget';
+import ScatterRating from './components/ScatterRating';
 
 export default function App() {
   const [meta, setMeta] = useState<MetaResponse | null>(null);
@@ -16,6 +17,9 @@ export default function App() {
     ymax: undefined,
     limit: 2000,
   });
+
+  // NEW: rating source (TMDB | IMDb)
+  const [ratingSource, setRatingSource] = useState<"tmdb" | "imdb">("tmdb");
 
   useEffect(() => {
     fetchMeta()
@@ -40,7 +44,8 @@ export default function App() {
 
       {meta && (
         <>
-          <section className='grid grid-cols-2 md:grid-cold-4 gap-4'>
+          {/* typo fix: md:grid-cols-4 */}
+          <section className='grid grid-cols-2 md:grid-cols-4 gap-4'>
             <Stat label="Year Min" value={String(meta.year_min ?? "-")} />
             <Stat label="Year Max" value={String(meta.year_max ?? "-")} />
             <Stat label="Genres" value={String(meta.genres.length)} />
@@ -49,7 +54,33 @@ export default function App() {
 
           <FilterBar meta={meta} value={filters} onChange={setFilters} />
 
-          <ScatterBudget genre={filters.genre} ymin={filters.ymin} ymax={filters.ymax} limit={filters.limit} />
+          {/* Simple inline control for rating source */}
+          <section className="flex items-center gap-3">
+            <label className="text-sm font-medium">Rating source</label>
+            <select
+              className="input"
+              value={ratingSource}
+              onChange={(e) => setRatingSource(e.target.value as "tmdb" | "imdb")}
+            >
+              <option value="tmdb">TMDB</option>
+              <option value="imdb">IMDb</option>
+            </select>
+          </section>
+
+          <ScatterBudget
+            genre={filters.genre}
+            ymin={filters.ymin}
+            ymax={filters.ymax}
+            limit={filters.limit}
+          />
+
+          <ScatterRating
+            genre={filters.genre}
+            ymin={filters.ymin}
+            ymax={filters.ymax}
+            limit={filters.limit}
+            source={ratingSource}
+          />
         </>
       )}
     </div>
