@@ -16,6 +16,15 @@ type Props = {
   limit: number;
 };
 
+function useDebounce<T>(value: T, delay: number = 400): T {
+    const [debounced, setDebounced] = useState(value);
+    useEffect(() => {
+        const id = setTimeout(() => setDebounced(value), delay);
+        return () => clearTimeout(id);
+    }, [value, delay]);
+    return debounced;
+}
+
 export default function ScatterBudget({ genre, ymin, ymax, limit }: Props) {
     const ref = useRef<HTMLDivElement | null>(null);
     const chartRef = useRef<echarts.EChartsType | null>(null);
@@ -23,11 +32,28 @@ export default function ScatterBudget({ genre, ymin, ymax, limit }: Props) {
     const [loading, setLoading] = useState(true);
     const [err, setErr] = useState<string | null>(null);
 
+    const filterParams = useMemo(() => ({ genre, ymin, ymax, limit }), [genre, ymin, ymax, limit]);
+    const debounced = useDebounce(filterParams, 400);
+
     useEffect(() => {
+        let alive = true;
         setLoading(true);
         setErr(null);
-        fetchScatterBudget({ genre, ymin, ymax, limit }).then(setData).catch((e) => setErr(e?.message ?? "Error")).finally(() => setLoading(false));
-    }, [genre, ymin, ymax, limit]);
+
+        fetchScatterBudget(debounced)
+        .then((d) => {
+            if (alive) setData(d);
+        })
+        .catch((e) => {
+            if (alive) setErr(e?.message ?? "Error");
+        })
+        .finally(() => {
+            if (alive) setLoading(false);
+        });
+
+        return () => { alive = false; };
+
+    }, [debounced]);
 
     useEffect(() => {
         if (!ref.current) return;

@@ -11,6 +11,16 @@ type Props = {
   source?: "tmdb" | "imdb";
 };
 
+function useDebounce<T>(value: T, delay: number = 400): T {
+    const [debounced, setDebounced] = useState(value);
+    useEffect(() => {
+        const id = setTimeout(() => setDebounced(value), delay);
+        return () => clearTimeout(id);
+    }, [value, delay]);
+    return debounced;
+}
+
+
 export default function ScatterRating({ genre, ymin, ymax, limit, source }: Props) {
   const ref = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<echarts.EChartsType | null>(null);
@@ -18,14 +28,28 @@ export default function ScatterRating({ genre, ymin, ymax, limit, source }: Prop
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
 
+  const filterParams = useMemo(() => ({ genre, ymin, ymax, limit, source }), [genre, ymin, ymax, limit, source]);
+  const debounced = useDebounce(filterParams, 400);
+
   useEffect(() => {
+    let alive = true;
     setLoading(true);
     setErr(null);
-    fetchScatterRating({ genre, ymin, ymax, limit, source })
-      .then(setData)
-      .catch((e) => setErr(e?.message ?? "Error"))
-      .finally(() => setLoading(false));
-  }, [genre, ymin, ymax, limit, source]);
+
+    fetchScatterRating(debounced)
+      .then((d) => {
+        if (alive) setData(d);
+      })
+      .catch((e) => {
+        if (alive) setErr(e?.message ?? "Error");
+      })
+      .finally(() => { if (alive) setLoading(false); });
+
+    return () => {
+      alive = false;
+    };
+
+  }, [debounced]);
 
   useEffect(() => {
     if (!ref.current) return;
@@ -149,7 +173,6 @@ export default function ScatterRating({ genre, ymin, ymax, limit, source }: Prop
       },
     };
 
-    // Important: cast through unknown to satisfy TS2352 on ECharts unions
     return opt as unknown as echarts.EChartsOption;
   }, [data, genre, source]);
 
