@@ -26,6 +26,16 @@ function useDebounce<T>(value: T, delay: number = 400): T {
     return debounced;
 }
 
+function finiteMinMax(a: number[]) {
+    let lo = Infinity, hi = -Infinity;
+    for (const v of a) if (Number.isFinite(v)) {
+        if (v < lo) lo = v;
+        if (v > hi) hi = v;
+    }
+    if (!Number.isFinite(lo) || !Number.isFinite(hi)) return { lo: 1, hi: 10 };
+    return { lo, hi };
+}
+
 export default function ScatterBudget({ genre, ymin, ymax, limit }: Props) {
     const ref = useRef<HTMLDivElement | null>(null);
     const chartRef = useRef<echarts.EChartsType | null>(null);
@@ -119,6 +129,21 @@ export default function ScatterBudget({ genre, ymin, ymax, limit }: Props) {
             poster: posterUrl(p.poster_path, "w92"),
         }));
 
+        const xs = seriesData.map(s => (s.value as [number, number])[0]);
+        const ys = seriesData.map(s => (s.value as [number, number])[1]);
+        const { lo: xLo, hi: xHi } = finiteMinMax(xs);
+        const { lo: yLo, hi: yHi } = finiteMinMax(ys);
+        const pad = 0.15;
+        const xMinInit = Math.max(1, xLo / Math.pow(10, pad));
+        const xMaxInit = xHi * Math.pow(10, pad);
+        const yMinInit = Math.max(1, yLo / Math.pow(10, pad));
+        const yMaxInit = yHi * Math.pow(10, pad);
+
+        const xMin = Math.max(1, Math.pow(10, Math.floor(Math.log10(xMinInit))));
+        const xMax = Math.pow(10, Math.ceil(Math.log10(xMaxInit)));
+        const yMin = Math.max(1, Math.pow(10, Math.floor(Math.log10(yMinInit))));
+        const yMax = Math.pow(10, Math.ceil(Math.log10(yMaxInit)));
+
         const r2 = data?.trend?.r2 ?? null;
         const slope = data?.trend.slope ?? null;
         const n = trimmed.length;
@@ -159,7 +184,9 @@ export default function ScatterBudget({ genre, ymin, ymax, limit }: Props) {
             xAxis: {
                 type: "log",
                 logBase: 10,
-                min: 1,
+                min: xMin,
+                max: xMax,
+                scale: true,
                 name: "Budget (USD, log)",
                 nameLocation: "middle",
                 nameGap: 30,
@@ -168,7 +195,9 @@ export default function ScatterBudget({ genre, ymin, ymax, limit }: Props) {
             yAxis: {
                 type: "log",
                 logBase: 10,
-                min: 1,
+                min: yMin,
+                max: yMax,
+                scale: true,
                 name: "Revenue (USD, log)",
                 nameLocation: "middle",
                 nameGap: 40,
@@ -176,9 +205,32 @@ export default function ScatterBudget({ genre, ymin, ymax, limit }: Props) {
             },
             toolbox: { show: false },
             dataZoom: [
-                { type: "inside", xAxisIndex: 0 },
-                { type: "inside", yAxisIndex: 0 },
-                { type: "slider", xAxisIndex: 0, bottom: 0 },
+                {
+                     type: "inside", 
+                     xAxisIndex: 0,
+                     zoomOnMouseWheel: true,
+                     moveOnMouseWheel: false,
+                     moveOnMouseMove: true,
+                     minSpan: 3,
+                     throttle: 50,
+                     preventDefaultMouseMove: true,
+                },
+                {
+                    type: "inside",
+                    yAxisIndex: 0,
+                     zoomOnMouseWheel: true,
+                     moveOnMouseWheel: false,
+                     moveOnMouseMove: true,
+                     minSpan: 3,
+                     throttle: 50,
+                     preventDefaultMouseMove: true,
+                },
+                {
+                    type: "slider",
+                    xAxisIndex: 0,
+                    bottom: 0,
+                    filterMode: "none",
+                },
             ],
             series: [
                 {
