@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import * as echarts from "echarts";
 import { fetchScatterRating, type ScatterRatingResponse } from "../lib/api";
 import { posterUrl } from "../lib/tmdb";
+import { boundsByPercentile } from "../lib/stats";
 
 type Props = {
   genre?: string;
@@ -80,7 +81,16 @@ export default function ScatterRating({ genre, ymin, ymax, limit, source }: Prop
   const option = useMemo(() => {
     const pts = data?.points ?? [];
 
-    const seriesData = pts.map((p) => ({
+    const revenues = pts.map((p) => p.revenue ?? 0);
+    const [rLo, rHi] = boundsByPercentile(revenues, 0.01, 0.99);
+
+    const trimmed = pts.filter((p) => {
+        const r = p.revenue ?? 0;
+        const rating = p.rating ?? 0;
+        return r > 0 && r >= rLo && r <= rHi && rating >= 0 && rating <= 10;
+    });
+
+    const seriesData = trimmed.map((p) => ({
       value: [p.rating ?? 0, Math.max(1, p.revenue ?? 1)] as [number, number],
       name: p.title,
       year: p.year,
@@ -89,7 +99,7 @@ export default function ScatterRating({ genre, ymin, ymax, limit, source }: Prop
 
     const r2 = data?.trend?.r2 ?? null;
     const slope = data?.trend?.slope ?? null;
-    const n = data?.trend?.n ?? 0;
+    const n = trimmed.length;
     const ratingSource = (source ?? "tmdb").toUpperCase();
 
     const opt = {
@@ -138,14 +148,7 @@ export default function ScatterRating({ genre, ymin, ymax, limit, source }: Prop
         nameGap: 40,
         axisLabel: { formatter: (v: number) => "$" + v.toLocaleString() },
       },
-      toolbox: {
-        feature: {
-          dataZoom: { yAxisIndex: "none" },
-          restore: {},
-          saveAsImage: {},
-        },
-        right: 10,
-      },
+      toolbox: { show: false },
       dataZoom: [
         { type: "inside", xAxisIndex: 0 },
         { type: "inside", yAxisIndex: 0 },

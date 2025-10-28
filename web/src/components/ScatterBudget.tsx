@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import * as echarts from "echarts";
 import { fetchScatterBudget, type ScatterBudgetResponse } from "../lib/api";
 import { posterUrl } from "../lib/tmdb";
+import { boundsByPercentile } from "../lib/stats";
 
 type TooltipParams = {
     name?: string;
@@ -84,7 +85,34 @@ export default function ScatterBudget({ genre, ymin, ymax, limit }: Props) {
     const option = useMemo<echarts.EChartsOption>(() => {
         const pts = data?.points ??[];
 
-        const seriesData = pts.map((p) => ({
+        const MIN_BUDGET = 10_000;
+        const MIN_REVENUE = 1_000;
+        const RATIO_FLOOR = 0.001;
+        const RATIO_CEIL = 1000;
+
+        const budgets = pts.map((p) => p.budget ?? 0);
+        const revenues = pts.map((p) => p.revenue ?? 0);
+        const [bLo, bHi] = boundsByPercentile(budgets, 0.01, 0.99);
+        const [rLo, rHi] = boundsByPercentile(revenues, 0.01, 0.99);
+
+        const baseForRatios = pts.filter((p) => ((p.budget ?? 0) > 0) && ((p.revenue ?? 0) > 0));
+        const ratios = baseForRatios.map((p) => (p.revenue! / p.budget!));
+        const [ratioLoP, ratioHiP] = boundsByPercentile(ratios, 0.01, 0.99);
+        const ratioLo = Math.max(RATIO_FLOOR, ratioLoP || RATIO_FLOOR);
+        const ratioHi = Math.min(RATIO_CEIL, ratioHiP || RATIO_CEIL);
+
+        const trimmed = pts.filter((p) => {
+            const b = p.budget ?? 0;
+            const r = p.revenue ?? 0;
+            if (!Number.isFinite(b) || !Number.isFinite(r) || b <= 0 || r <= 0) return false;
+            if (b < MIN_BUDGET || r < MIN_REVENUE) return false;
+            if (b < bLo || b > bHi || r < rLo || r > rHi) return false;
+            const ratio = r / b;
+            if (ratio < ratioLo || ratio > ratioHi) return false;
+            return true;
+        });
+
+        const seriesData = trimmed.map((p) => ({
             value: [Math.max(1, p.budget ?? 1), Math.max(1, p.revenue ?? 1)],
             name: p.title,
             year: p.year,
@@ -93,7 +121,7 @@ export default function ScatterBudget({ genre, ymin, ymax, limit }: Props) {
 
         const r2 = data?.trend?.r2 ?? null;
         const slope = data?.trend.slope ?? null;
-        const n = data?.trend?.n ?? 0;
+        const n = trimmed.length;
 
         return {
             tooltip: {
@@ -146,14 +174,7 @@ export default function ScatterBudget({ genre, ymin, ymax, limit }: Props) {
                 nameGap: 40,
                 axisLabel: { formatter: (v: number) => "$" + v.toLocaleString() },
             },
-            toolbox: {
-                feature: {
-                    dataZoom: { yAxisIndex: "none" },
-                    restore: {},
-                    saveAsImage: {},
-                },
-                right: 10,
-            },
+            toolbox: { show: false },
             dataZoom: [
                 { type: "inside", xAxisIndex: 0 },
                 { type: "inside", yAxisIndex: 0 },
