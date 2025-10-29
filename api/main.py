@@ -26,9 +26,11 @@ origins = [
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-    allow_credentials=False,
-    allow_methods=["*"],
+    allow_origin_regex=r"^https://tmdb-explorer(-.*)?\.vercel\.app$",
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 def _where_and_join_for_filters(ymin: int | None, ymax: int | None, genre: str| None):
