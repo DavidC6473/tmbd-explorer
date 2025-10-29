@@ -17,10 +17,16 @@ engine: Engine = create_engine(DB_URL, pool_pre_ping=True)
 
 app = FastAPI(title="TMDB Explorer API", version="0.1.0")
 
+origins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "https://tmdb-explorer.vercel.app",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=origins,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -196,3 +202,7 @@ def scatter_rating_revenue(
         "n": int(t["n"]) if t.get("n") is not None else 0,
     }
     return {"points": points, "trend": out_trend, "source": source}
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
