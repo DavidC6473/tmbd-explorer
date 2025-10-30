@@ -2,7 +2,7 @@ import axios from "axios";
 
 const api = axios.create({
     baseURL: import.meta.env.VITE_API_BASE ?? "http://127.0.0.1:8000",
-    timeout: 20000,
+    timeout: 90000,
 });
 
 export type MetaResponse = {
@@ -71,4 +71,5 @@ export async function fetchScatterRating(params?: {
         params,
     });
     return data;
+
 }
