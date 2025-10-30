@@ -27,12 +27,12 @@ It visualizes movie budgets, revenues, and ratings through dynamic ECharts scatt
 ##  Architecture Overview
 
 ```
-┌──────────────────────────┐       ┌───────────────────────────────┐
-│   React + Vite Frontend  │       │       FastAPI Backend        │
-│  (tmbd-explorer.vercel.app) │ ←→ │ (tmbd-explorer.onrender.com) │
-│      • TypeScript         │       │      • SQLAlchemy + Psycopg  │
-│      • ECharts            │       │      • Neon PostgreSQL       │
-└──────────────────────────┘       └───────────────────────────────┘
+┌─────────────────────────────┐          ┌──────────────────────────────┐
+│   React + Vite Frontend     │          │       FastAPI Backend        │
+│  (tmbd-explorer.vercel.app) │    ←→    │ (tmbd-explorer.onrender.com) │
+│      • TypeScript           │          │      • SQLAlchemy + Psycopg  │
+│      • ECharts              │          │      • Neon PostgreSQL       │
+└─────────────────────────────┘          └──────────────────────────────┘
 ```
 
 - **Frontend:**  
