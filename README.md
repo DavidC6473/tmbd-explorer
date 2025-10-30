@@ -184,17 +184,6 @@ Visit → `http://localhost:5173`
 
 ---
 
-##  Visuals
-
-| Chart | Description |
-|-------|--------------|
-| ![Budget vs Revenue](./assets/chart_budget.png) | Log-log scale plot with realistic outlier trimming |
-| ![Rating vs Revenue](./assets/chart_rating.png) | Comparison of audience rating vs revenue |
-
-*(Add chart screenshots into `/assets` for GitHub preview.)*
-
----
-
 ##  Future Improvements
 
 - Add filtering by language and release decade  
