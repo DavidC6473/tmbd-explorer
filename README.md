@@ -59,7 +59,7 @@ It visualizes movie budgets, revenues, and ratings through dynamic ECharts scatt
 
 ##  Dataset & Data Preparation
 
-This project uses the **[TMDB 5000 Movie Dataset](https://www.kaggle.com/datasets/tmdb/tmdb-movie-metadata)** available on Kaggle.  
+This project uses the **[TMDB/IMDB Movie Dataset](https://www.kaggle.com/datasets/alanvourch/tmdb-movies-daily-updates)** available on Kaggle.  
 It contains metadata for thousands of movies, including title, release date, genre, budget, revenue, language, and ratings.
 
 ### Cleaning & Transformation
